@@ -25,14 +25,29 @@ jobs:
           if [ -n "$KEYSTORE_B64" ]; then
             echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
             echo "EASYPRINT_KEYSTORE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+          else
+            # No key configured: make a throwaway one so the build still produces an installable APK.
+            keytool -genkeypair -noprompt -keystore "$RUNNER_TEMP/release.jks" -alias easyprint \
+              -keyalg RSA -keysize 2048 -validity 10000 -storepass easyprint -keypass easyprint \
+              -dname "CN=Easy Print"
+            {
+              echo "EASYPRINT_KEYSTORE=$RUNNER_TEMP/release.jks"
+              echo "EASYPRINT_KEYSTORE_PASSWORD=easyprint"
+              echo "EASYPRINT_KEY_ALIAS=easyprint"
+              echo "EASYPRINT_KEY_PASSWORD=easyprint"
+            } >> "$GITHUB_ENV"
           fi
       - name: Unit tests
         run: ./gradlew :app:testDebugUnitTest --no-daemon
+      - name: Signing secrets
+        if: ${{ env.EASYPRINT_KEYSTORE_PASSWORD == '' }}
+        run: |
+          {
+            echo "EASYPRINT_KEYSTORE_PASSWORD=${{ secrets.EASYPRINT_KEYSTORE_PASSWORD }}"
+            echo "EASYPRINT_KEY_ALIAS=${{ secrets.EASYPRINT_KEY_ALIAS }}"
+            echo "EASYPRINT_KEY_PASSWORD=${{ secrets.EASYPRINT_KEY_PASSWORD }}"
+          } >> "$GITHUB_ENV"
       - name: Build APK
-        env:
-          EASYPRINT_KEYSTORE_PASSWORD: ${{ secrets.EASYPRINT_KEYSTORE_PASSWORD }}
-          EASYPRINT_KEY_ALIAS: ${{ secrets.EASYPRINT_KEY_ALIAS }}
-          EASYPRINT_KEY_PASSWORD: ${{ secrets.EASYPRINT_KEY_PASSWORD }}
         run: ./gradlew :app:assembleRelease --no-daemon && cp app/build/outputs/apk/release/app-release.apk EasyPrint.apk
       - uses: actions/upload-artifact@v4
         with:
