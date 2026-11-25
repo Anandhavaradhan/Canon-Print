@@ -1,0 +1,464 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="token" content="__TOKEN__">
+<meta name="color-scheme" content="light dark">
+<title>Canon Print</title>
+<link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/static/app.css">
+<script src="/static/app.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#settings-panel">Skip to print settings</a>
+
+<!-- SVG sprite ---------------------------------------------------------- -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-printer" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" d="M7 9V3.8h10V9M7 17H4.5A1.5 1.5 0 0 1 3 15.5v-5A1.5 1.5 0 0 1 4.5 9h15a1.5 1.5 0 0 1 1.5 1.5v5a1.5 1.5 0 0 1-1.5 1.5H17"/><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" d="M7 14h10v6.2H7z"/><circle cx="17.3" cy="11.8" r="1" fill="currentColor"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" d="M6 2.8h8l5 5v13.4H6z"/><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" d="M14 2.8v5h5"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-minus" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M5 12h14"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M6 15l6-6 6 6"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6"/></symbol>
+    <symbol id="i-left" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M15 6l-6 6 6 6"/></symbol>
+    <symbol id="i-right" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 6l6 6-6 6"/></symbol>
+    <symbol id="i-flip" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4 12a8 8 0 0 1 13.7-5.6L20 8.7M20 4v4.7h-4.7M20 12a8 8 0 0 1-13.7 5.6L4 15.3M4 20v-4.7h4.7"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M9.5 9.3a2.6 2.6 0 0 1 5 .9c0 1.8-2.5 2.2-2.5 4"/><circle cx="12" cy="17.2" r="1.1" fill="currentColor"/></symbol>
+    <symbol id="i-text" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 19l5-13 5 13M4.8 14.5h6.4M14.5 19l3.3-8.5L21 19M15.6 16.3h4.4"/></symbol>
+    <symbol id="i-history" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3.5 12a8.5 8.5 0 1 0 2.5-6L3.5 8.5M3.5 4v4.5H8M12 7.5V12l3 2"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-speak" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" d="M3 6.5A1.5 1.5 0 0 1 4.5 5H9l2 2.2h8.5A1.5 1.5 0 0 1 21 8.7v9.8a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18.5z"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" d="M12 2.8l1.6 2.4 2.8-.8.6 2.8 2.8.6-.8 2.8 2.4 1.6-2.4 1.6.8 2.8-2.8.6-.6 2.8-2.8-.8L12 21.2l-1.6-2.4-2.8.8-.6-2.8-2.8-.6.8-2.8L2.8 12l2.4-1.6-.8-2.8 2.8-.6.6-2.8 2.8.8z"/></symbol>
+    <symbol id="i-power" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M12 3v8M7 6.3a7.5 7.5 0 1 0 10 0"/></symbol>
+  </defs>
+</svg>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true"><svg><use href="#i-printer"/></svg></span>
+    <span class="brand-name">Canon Print</span>
+  </div>
+
+  <div class="printer-picker">
+    <label for="printer" class="visually-hidden">Printer</label>
+    <span class="status-dot" id="printer-dot" aria-hidden="true"></span>
+    <select id="printer"></select>
+    <span class="printer-status" id="printer-status" role="status" aria-live="polite"></span>
+  </div>
+
+  <nav class="top-actions" aria-label="App">
+    <button class="icon-btn" type="button" data-open="history-dialog" title="Recent prints">
+      <svg aria-hidden="true"><use href="#i-history"/></svg><span class="lbl">Recent</span>
+    </button>
+    <button class="icon-btn" type="button" data-open="display-dialog" title="Text size and colours">
+      <svg aria-hidden="true"><use href="#i-text"/></svg><span class="lbl">Display</span>
+    </button>
+    <button class="icon-btn" type="button" data-open="printer-dialog" title="Printer tools">
+      <svg aria-hidden="true"><use href="#i-gear"/></svg><span class="lbl">Printer</span>
+    </button>
+    <button class="icon-btn" type="button" data-open="help-dialog" title="Help and keyboard shortcuts (?)">
+      <svg aria-hidden="true"><use href="#i-help"/></svg><span class="lbl">Help</span>
+    </button>
+  </nav>
+</header>
+
+<main class="layout">
+  <!-- ============== SETTINGS ============== -->
+  <section class="panel settings" id="settings-panel" aria-labelledby="settings-title" tabindex="-1">
+    <h1 id="settings-title" class="visually-hidden">Print settings</h1>
+
+    <!-- Files -->
+    <section class="card" aria-labelledby="files-h">
+      <div class="card-head">
+        <h2 id="files-h"><span class="step">1</span> Document</h2>
+        <button type="button" class="btn btn-ghost btn-sm" id="add-files"><svg aria-hidden="true"><use href="#i-plus"/></svg> Add files</button>
+      </div>
+      <input type="file" id="file-input" multiple hidden
+             accept=".pdf,.jpg,.jpeg,.png,.gif,.bmp,.tif,.tiff,.webp,.heic,.heif,.txt,.md,.csv,.html,.htm,.doc,.docx,.odt,.rtf,.xls,.xlsx,.ods,.ppt,.pptx,.odp">
+      <ul class="file-list" id="file-list" aria-label="Open files"></ul>
+      <p class="empty-files muted" id="no-files">No document yet. Drop a file anywhere on this window, or use <strong>Add files</strong>.</p>
+    </section>
+
+    <!-- Quick picks -->
+    <section class="card" aria-labelledby="quick-h">
+      <div class="card-head">
+        <h2 id="quick-h"><span class="step">2</span> Quick picks</h2>
+        <button type="button" class="btn btn-ghost btn-sm" id="save-preset"><svg aria-hidden="true"><use href="#i-star"/></svg> Save current</button>
+      </div>
+      <div class="chips" id="presets" role="group" aria-label="Quick picks"></div>
+    </section>
+
+    <!-- Sides -->
+    <section class="card" aria-labelledby="sides-h">
+      <h2 id="sides-h"><span class="step">3</span> Sides</h2>
+      <div class="tiles tiles-3" role="radiogroup" aria-labelledby="sides-h" id="sides-group">
+        <label class="tile">
+          <input type="radio" name="sides" value="one">
+          <span class="tile-art" aria-hidden="true">
+            <svg viewBox="0 0 64 48"><rect x="20" y="6" width="26" height="36" rx="2" class="paper"/><path d="M25 14h16M25 19h16M25 24h12" class="ink"/></svg>
+          </span>
+          <span class="tile-title">One side</span>
+          <span class="tile-sub">Print on the front only</span>
+        </label>
+        <label class="tile">
+          <input type="radio" name="sides" value="long">
+          <span class="tile-art" aria-hidden="true">
+            <svg viewBox="0 0 64 48"><rect x="10" y="6" width="22" height="34" rx="2" class="paper back"/><rect x="32" y="6" width="22" height="34" rx="2" class="paper"/><path d="M32 6v34" class="spine"/><path d="M14 14h13M14 19h13M36 14h13M36 19h13" class="ink"/><path d="M38 44c-4 3-8 3-12 0" class="arrow"/><path d="M26 41.5l0 3 3-.5" class="arrow"/></svg>
+          </span>
+          <span class="tile-title">Flip on long edge</span>
+          <span class="tile-sub">Both sides · turns like a book</span>
+        </label>
+        <label class="tile">
+          <input type="radio" name="sides" value="short">
+          <span class="tile-art" aria-hidden="true">
+            <svg viewBox="0 0 64 48"><rect x="18" y="4" width="28" height="19" rx="2" class="paper back"/><rect x="18" y="23" width="28" height="19" rx="2" class="paper"/><path d="M18 23h28" class="spine"/><path d="M23 28h18M23 33h18" class="ink"/><path d="M50 30c3-3 3-9 0-12" class="arrow"/><path d="M47.5 18l2.5 0 0 3" class="arrow"/></svg>
+          </span>
+          <span class="tile-title">Flip on short edge</span>
+          <span class="tile-sub">Both sides · flips up like a notepad</span>
+        </label>
+      </div>
+      <p class="note" id="sides-note" hidden></p>
+    </section>
+
+    <!-- Layout -->
+    <section class="card" aria-labelledby="layout-h">
+      <h2 id="layout-h"><span class="step">4</span> Pages per side</h2>
+      <div class="tiles tiles-4" role="radiogroup" aria-labelledby="layout-h" id="layout-group">
+        <label class="tile tile-compact">
+          <input type="radio" name="layout" value="1">
+          <span class="tile-art" aria-hidden="true"><svg viewBox="0 0 64 48"><rect x="21" y="5" width="22" height="38" rx="2" class="paper"/><rect x="25" y="10" width="14" height="28" rx="1" class="pg"/></svg></span>
+          <span class="tile-title">1 page</span>
+        </label>
+        <label class="tile tile-compact">
+          <input type="radio" name="layout" value="2">
+          <span class="tile-art" aria-hidden="true"><svg viewBox="0 0 64 48"><rect x="13" y="10" width="38" height="28" rx="2" class="paper"/><rect x="17" y="13" width="14" height="22" rx="1" class="pg"/><rect x="33" y="13" width="14" height="22" rx="1" class="pg"/></svg></span>
+          <span class="tile-title">2 pages</span>
+        </label>
+        <label class="tile tile-compact">
+          <input type="radio" name="layout" value="4">
+          <span class="tile-art" aria-hidden="true"><svg viewBox="0 0 64 48"><rect x="21" y="5" width="22" height="38" rx="2" class="paper"/><rect x="24" y="8" width="7.5" height="15" rx="1" class="pg"/><rect x="32.5" y="8" width="7.5" height="15" rx="1" class="pg"/><rect x="24" y="25" width="7.5" height="15" rx="1" class="pg"/><rect x="32.5" y="25" width="7.5" height="15" rx="1" class="pg"/></svg></span>
+          <span class="tile-title">4 pages</span>
+        </label>
+        <label class="tile tile-compact">
+          <input type="radio" name="layout" value="booklet">
+          <span class="tile-art" aria-hidden="true"><svg viewBox="0 0 64 48"><path d="M32 12c-5-3-12-4-19-3v28c7-1 14 0 19 3 5-3 12-4 19-3V9c-7-1-14 0-19 3z" class="paper"/><path d="M32 12v28" class="spine"/></svg></span>
+          <span class="tile-title">Booklet</span>
+        </label>
+      </div>
+      <div class="field-row" id="more-nup-row">
+        <label for="pages_per_side">Or choose</label>
+        <select id="pages_per_side" data-setting="pages_per_side">
+          <option value="1">1 page per side</option>
+          <option value="2">2 pages per side</option>
+          <option value="4">4 pages per side</option>
+          <option value="6">6 pages per side</option>
+          <option value="9">9 pages per side</option>
+          <option value="16">16 pages per side</option>
+        </select>
+        <label class="check"><input type="checkbox" data-setting="borders"> Draw a border around each page</label>
+      </div>
+    </section>
+
+    <!-- Colour & quality -->
+    <section class="card" aria-labelledby="look-h">
+      <h2 id="look-h"><span class="step">5</span> Colour &amp; quality</h2>
+      <div class="tiles tiles-2" role="radiogroup" aria-label="Colour" id="color-group">
+        <label class="tile tile-row">
+          <input type="radio" name="color" value="color">
+          <span class="swatch swatch-color" aria-hidden="true"></span>
+          <span><span class="tile-title">Colour</span><span class="tile-sub">Uses all four inks</span></span>
+        </label>
+        <label class="tile tile-row">
+          <input type="radio" name="color" value="bw">
+          <span class="swatch swatch-bw" aria-hidden="true"></span>
+          <span><span class="tile-title">Black &amp; white</span><span class="tile-sub">Saves colour ink</span></span>
+        </label>
+      </div>
+
+      <fieldset class="segmented" id="quality-group">
+        <legend>Quality</legend>
+        <label><input type="radio" name="quality" value="draft"><span><b>Draft</b><small>Fast, saves ink</small></span></label>
+        <label><input type="radio" name="quality" value="standard"><span><b>Standard</b><small>Everyday</small></span></label>
+        <label><input type="radio" name="quality" value="high"><span><b>High</b><small>Photos &amp; detail</small></span></label>
+      </fieldset>
+    </section>
+
+    <!-- Pages & copies -->
+    <section class="card" aria-labelledby="pages-h">
+      <h2 id="pages-h"><span class="step">6</span> Pages &amp; copies</h2>
+      <div class="grid-2">
+        <div class="field">
+          <label for="page_range">Which pages</label>
+          <input id="page_range" data-setting="page_range" type="text" inputmode="numeric" autocomplete="off"
+                 placeholder="All pages" aria-describedby="range-help range-error">
+          <small id="range-help" class="hint">Leave empty for all. Example: <code>1-3, 5, 8-</code></small>
+          <small id="range-error" class="error" role="alert"></small>
+        </div>
+        <div class="field">
+          <label for="copies">Copies</label>
+          <div class="stepper">
+            <button type="button" class="step-btn" data-step="-1" aria-label="One fewer copy"><svg aria-hidden="true"><use href="#i-minus"/></svg></button>
+            <input id="copies" data-setting="copies" type="number" min="1" max="999" inputmode="numeric">
+            <button type="button" class="step-btn" data-step="1" aria-label="One more copy"><svg aria-hidden="true"><use href="#i-plus"/></svg></button>
+          </div>
+          <label class="check"><input type="checkbox" data-setting="collate"> Keep copies in sets (1,2,3 · 1,2,3)</label>
+        </div>
+      </div>
+    </section>
+
+    <!-- More options -->
+    <details class="card more" id="more">
+      <summary><h2>More options</h2><span class="muted">Paper, size, margins, order, two-sided set-up</span></summary>
+      <div class="more-body">
+        <div class="grid-2">
+          <div class="field">
+            <label for="paper">Paper size</label>
+            <select id="paper" data-setting="paper"></select>
+          </div>
+          <div class="field">
+            <label for="paper_type">Paper type</label>
+            <select id="paper_type" data-setting="paper_type">
+              <option value="plain">Plain paper</option>
+              <option value="photo_glossy">Glossy photo paper</option>
+              <option value="photo_matte">Matte photo paper</option>
+              <option value="envelope">Envelope</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="orientation">Orientation</label>
+            <select id="orientation" data-setting="orientation">
+              <option value="auto">Automatic (match the document)</option>
+              <option value="portrait">Portrait (tall)</option>
+              <option value="landscape">Landscape (wide)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="scaling">Size on paper</label>
+            <select id="scaling" data-setting="scaling">
+              <option value="fit">Fit to page</option>
+              <option value="shrink">Shrink only if too big</option>
+              <option value="actual">Actual size (100%)</option>
+              <option value="custom">Custom size…</option>
+            </select>
+          </div>
+          <div class="field" id="scale-field" hidden>
+            <label for="scale_percent">Custom size (%)</label>
+            <input id="scale_percent" data-setting="scale_percent" type="number" min="10" max="400" step="5">
+          </div>
+          <div class="field">
+            <label for="margin_mm">Margins</label>
+            <select id="margin_mm" data-setting="margin_mm">
+              <option value="0">None</option>
+              <option value="3">Narrow (3 mm)</option>
+              <option value="5">Normal (5 mm)</option>
+              <option value="10">Wide (10 mm)</option>
+              <option value="20">Extra wide (20 mm)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="page_subset">Print only</label>
+            <select id="page_subset" data-setting="page_subset">
+              <option value="all">All pages in the range</option>
+              <option value="odd">Odd pages (1, 3, 5…)</option>
+              <option value="even">Even pages (2, 4, 6…)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="page_order">Order of pages on a side</label>
+            <select id="page_order" data-setting="page_order">
+              <option value="across">Across, then down</option>
+              <option value="down">Down, then across</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="checks">
+          <label class="check"><input type="checkbox" data-setting="last_page_first"> Print the last page first <span class="muted">(pages land in order, face up)</span></label>
+          <label class="check"><input type="checkbox" data-setting="files_on_new_sheet"> Start each file on a new sheet</label>
+        </div>
+
+        <h3>Two-sided printing</h3>
+        <fieldset class="segmented compact" id="duplex-group">
+          <legend>How the paper is turned over</legend>
+          <label><input type="radio" name="duplex_method" value="manual"><span><b>Guided</b><small>I turn the pile over (G3000 series)</small></span></label>
+          <label><input type="radio" name="duplex_method" value="auto"><span><b>Automatic</b><small>Printer has a duplex unit</small></span></label>
+        </fieldset>
+        <div class="checks">
+          <label class="check"><input type="checkbox" data-setting="rotate_backs"> Turn back sides upside down <span class="muted">(fix if backs come out upside down)</span></label>
+          <label class="check"><input type="checkbox" data-setting="reverse_backs"> Print back sides in reverse order <span class="muted">(fix if backs land on the wrong sheets)</span></label>
+        </div>
+        <button type="button" class="btn btn-secondary" id="run-test">Run the two-sided test (2 sheets)</button>
+        <div class="more-foot">
+          <button type="button" class="btn btn-ghost btn-sm" id="reset-settings">Reset all settings</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="driver-dialog" hidden>Printer’s own settings…</button>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============== PREVIEW ============== -->
+  <section class="panel preview" aria-labelledby="preview-h">
+    <div class="preview-head">
+      <h2 id="preview-h">Preview</h2>
+      <div class="side-toggle" role="group" aria-label="Show side" id="side-toggle" hidden>
+        <button type="button" data-side="front" aria-pressed="true">Front</button>
+        <button type="button" data-side="back" aria-pressed="false">Back</button>
+      </div>
+    </div>
+
+    <div class="stage" id="stage">
+      <div class="drop-empty" id="drop-empty">
+        <div class="drop-icon" aria-hidden="true"><svg><use href="#i-file"/></svg></div>
+        <p class="drop-title">Drop a document here</p>
+        <p class="muted">PDF, photos, text, Word, Excel or PowerPoint</p>
+        <button type="button" class="btn btn-primary" id="choose-files">Choose files…</button>
+        <p class="muted kbd-hint">or press <kbd>Ctrl</kbd> + <kbd>O</kbd></p>
+      </div>
+
+      <div class="viewer" id="viewer" hidden>
+        <button type="button" class="nav-btn" id="prev-sheet" aria-label="Previous sheet"><svg aria-hidden="true"><use href="#i-left"/></svg></button>
+        <figure class="sheet-wrap" id="sheet-wrap">
+          <div class="sheet" id="sheet">
+            <div class="face face-front"><img id="img-front" alt=""></div>
+            <div class="face face-back"><img id="img-back" alt=""><div class="blank-back" id="blank-back">Blank back</div></div>
+          </div>
+          <figcaption id="sheet-caption" aria-live="polite"></figcaption>
+        </figure>
+        <button type="button" class="nav-btn" id="next-sheet" aria-label="Next sheet"><svg aria-hidden="true"><use href="#i-right"/></svg></button>
+      </div>
+      <div class="busy" id="preview-busy" hidden><span class="spinner" aria-hidden="true"></span> Updating preview…</div>
+    </div>
+
+    <div class="thumbs" id="thumbs" role="list" aria-label="All sheets"></div>
+
+    <div class="printbar">
+      <div class="summary">
+        <p class="summary-main" id="summary-main" aria-live="polite">Open a document to begin.</p>
+        <p class="summary-sub muted" id="summary-sub"></p>
+      </div>
+      <button type="button" class="btn btn-primary btn-print" id="print-btn" disabled>
+        <svg aria-hidden="true"><use href="#i-printer"/></svg><span id="print-label">Print</span>
+      </button>
+    </div>
+  </section>
+</main>
+
+<div class="drop-overlay" id="drop-overlay" aria-hidden="true"><div>Drop to add</div></div>
+<div class="toast-zone" id="toasts" role="status" aria-live="polite"></div>
+<div class="visually-hidden" id="announcer" aria-live="assertive"></div>
+
+<!-- ============== DIALOGS ============== -->
+
+<dialog id="wizard" aria-labelledby="wiz-title" aria-describedby="wiz-body">
+  <div class="dlg">
+    <div class="wiz-progress" id="wiz-progress" aria-hidden="true"></div>
+    <h2 id="wiz-title"></h2>
+    <div id="wiz-body" class="wiz-body"></div>
+    <div class="dlg-actions" id="wiz-actions"></div>
+  </div>
+</dialog>
+
+<dialog id="display-dialog" aria-labelledby="display-title">
+  <form method="dialog" class="dlg">
+    <h2 id="display-title">Display</h2>
+    <fieldset class="segmented" id="textsize-group">
+      <legend>Text size</legend>
+      <label><input type="radio" name="textsize" value="100"><span><b style="font-size:.95rem">A</b><small>Normal</small></span></label>
+      <label><input type="radio" name="textsize" value="115"><span><b style="font-size:1.15rem">A</b><small>Large</small></span></label>
+      <label><input type="radio" name="textsize" value="130"><span><b style="font-size:1.35rem">A</b><small>Larger</small></span></label>
+      <label><input type="radio" name="textsize" value="150"><span><b style="font-size:1.6rem">A</b><small>Largest</small></span></label>
+    </fieldset>
+    <fieldset class="segmented" id="theme-group">
+      <legend>Colours</legend>
+      <label><input type="radio" name="theme" value="auto"><span><b>Automatic</b><small>Follow computer</small></span></label>
+      <label><input type="radio" name="theme" value="light"><span><b>Light</b><small>&nbsp;</small></span></label>
+      <label><input type="radio" name="theme" value="dark"><span><b>Dark</b><small>&nbsp;</small></span></label>
+      <label><input type="radio" name="theme" value="contrast"><span><b>High contrast</b><small>Strongest</small></span></label>
+    </fieldset>
+    <div class="checks">
+      <label class="check"><input type="checkbox" id="opt-motion"> Reduce animation</label>
+      <label class="check"><input type="checkbox" id="opt-speak"> Read two-sided instructions aloud</label>
+    </div>
+    <div class="dlg-actions"><button class="btn btn-primary" value="close">Done</button></div>
+  </form>
+</dialog>
+
+<dialog id="history-dialog" aria-labelledby="history-title">
+  <div class="dlg dlg-wide">
+    <h2 id="history-title">Recent prints</h2>
+    <ul class="history" id="history-list"></ul>
+    <p class="muted" id="history-empty">Nothing printed yet.</p>
+    <div class="dlg-actions">
+      <button type="button" class="btn btn-ghost" id="history-clear">Clear history</button>
+      <button type="button" class="btn btn-primary" data-close>Close</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="printer-dialog" aria-labelledby="printer-title">
+  <div class="dlg">
+    <h2 id="printer-title">Printer tools</h2>
+    <p id="printer-detail" class="muted"></p>
+    <div class="tool-list">
+      <button type="button" class="tool" id="tool-test"><b>Two-sided test</b><span>Print 2 sheets to check that backs line up the right way.</span></button>
+      <button type="button" class="tool" id="tool-cancel"><b>Cancel all print jobs</b><span>Clears anything stuck in the printer queue.</span></button>
+      <button type="button" class="tool" id="tool-refresh"><b>Find printers again</b><span>Use this after plugging in or turning on the printer.</span></button>
+      <button type="button" class="tool" id="tool-folder"><b>Open saved PDFs folder</b><span id="folder-path"></span></button>
+      <button type="button" class="tool" id="tool-driver" hidden><b>Printer’s own settings…</b><span>Opens the Canon driver window (paper type, special options).</span></button>
+      <button type="button" class="tool danger" id="tool-quit"><b>Quit Canon Print</b><span>Stops the app. You can close this browser tab afterwards.</span></button>
+    </div>
+    <div class="dlg-actions"><button type="button" class="btn btn-primary" data-close>Close</button></div>
+  </div>
+</dialog>
+
+<dialog id="help-dialog" aria-labelledby="help-title">
+  <div class="dlg dlg-wide">
+    <h2 id="help-title">Help</h2>
+    <h3>Printing on both sides</h3>
+    <p>The G3000 series can’t turn paper over by itself, so Canon Print does it in two rounds: it prints all the fronts, shows you exactly how to put the pile back, then prints the backs. It always uses the <strong>same simple move</strong>: turn the pile over like a page in a book.</p>
+    <ul>
+      <li><strong>Long edge</strong>: read it like a book. Use this for most documents.</li>
+      <li><strong>Short edge</strong>: flip it up like a notepad or wall calendar.</li>
+      <li>If the backs come out upside down or on the wrong sheets, run the <strong>two-sided test</strong> under <em>More options</em>. It fixes this for you.</li>
+    </ul>
+    <h3>Keyboard shortcuts</h3>
+    <table class="keys">
+      <tr><td><kbd>Ctrl</kbd> + <kbd>O</kbd></td><td>Open files</td></tr>
+      <tr><td><kbd>Ctrl</kbd> + <kbd>P</kbd></td><td>Print</td></tr>
+      <tr><td><kbd>←</kbd> <kbd>→</kbd></td><td>Previous / next sheet (in the preview)</td></tr>
+      <tr><td><kbd>F</kbd></td><td>Turn the preview sheet over</td></tr>
+      <tr><td><kbd>?</kbd></td><td>This help</td></tr>
+      <tr><td><kbd>Esc</kbd></td><td>Close a window</td></tr>
+    </table>
+    <h3>Tips</h3>
+    <ul>
+      <li>Load paper in the <strong>rear tray</strong>, print side facing up/towards you.</li>
+      <li><strong>Draft + Black &amp; white</strong> uses the least ink.</li>
+      <li>For photos, choose <strong>High</strong> quality and the matching photo paper under <em>More options</em>.</li>
+      <li>Pick <strong>Save as PDF file</strong> as the printer to check a layout without using paper.</li>
+    </ul>
+    <div class="dlg-actions"><button type="button" class="btn btn-primary" data-close>Close</button></div>
+  </div>
+</dialog>
+
+<dialog id="prompt-dialog" aria-labelledby="prompt-title">
+  <form method="dialog" class="dlg" id="prompt-form">
+    <h2 id="prompt-title"></h2>
+    <div class="field">
+      <label for="prompt-input" id="prompt-label"></label>
+      <input id="prompt-input" autocomplete="off">
+    </div>
+    <div class="dlg-actions">
+      <button class="btn btn-ghost" value="cancel" formnovalidate>Cancel</button>
+      <button class="btn btn-primary" value="ok" id="prompt-ok">OK</button>
+    </div>
+  </form>
+</dialog>
+</body>
+</html>

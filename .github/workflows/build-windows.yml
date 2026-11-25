@@ -1,0 +1,45 @@
+name: Build Windows app
+
+on:
+  push:
+    branches: ["**"]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt pytest
+      - run: python -m pytest -q tests
+
+  windows-exe:
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt pyinstaller
+      - name: Build CanonPrint.exe
+        run: >
+          pyinstaller --noconfirm --onefile --name CanonPrint
+          --add-data "canonprint/static;canonprint/static"
+          --hidden-import win32timezone
+          run.py
+      - name: Smoke test (starts, serves the page, quits)
+        shell: pwsh
+        run: |
+          $p = Start-Process dist\CanonPrint.exe -ArgumentList "--no-browser","--port","8790" -PassThru
+          Start-Sleep -Seconds 8
+          $r = Invoke-WebRequest http://127.0.0.1:8790/ -UseBasicParsing
+          if ($r.StatusCode -ne 200) { exit 1 }
+          Stop-Process -Id $p.Id
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CanonPrint-windows
+          path: dist/CanonPrint.exe

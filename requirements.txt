@@ -1,0 +1,5 @@
+pypdf>=4.0
+pypdfium2>=4.20
+Pillow>=10.0
+fpdf2>=2.7
+pywin32>=306; sys_platform == "win32"
