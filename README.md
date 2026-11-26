@@ -6,7 +6,12 @@ An Android app (plus a desktop version) that makes everyday printing on **Canon 
 
 **Install:** download `EasyPrint.apk` from this repository’s *Actions → Build Android app → latest run → Artifacts*. Open it on your phone and allow “Install unknown apps” when Android asks.
 
-**How it prints:** your phone talks straight to the printer over Wi-Fi (IPP, the same standard Mopria and AirPrint use). Easy Print controls quality, colour and paper itself, and shows the printer’s status and ink levels. No Canon app is needed. You can also pick **“Other printers & Save as PDF”** to use Android’s own print screen (Canon Print Service, Mopria, any printer, or saving a PDF).
+**How it prints:** the original G3000 has no AirPrint/IPP, which is why Android's built-in printing and Mopria can't find it. Easy Print talks to it **the same way Canon's own software does**, with no Android print settings or plug-ins:
+
+- **Finds it** on your Wi-Fi with SNMP (Canon's discovery method), shows *Ready*, *Out of paper*, *Paper jam* etc.
+- **Sends jobs** straight to the printer's port 9100 in Canon's own job format (IVEC commands + 600 dpi page images covering the printer's printable area), the same bytes Canon's Linux driver produces for the G3000.
+
+Newer printers that do speak IPP (G3010, G3020…) also work over IPP automatically.
 
 | You want to… | In Easy Print |
 |---|---|
@@ -28,7 +33,18 @@ An Android app (plus a desktop version) that makes everyday printing on **Canon 
 
 **Accessibility:** works with TalkBack, Switch Access and the phone’s font size. It also has its own **Display** settings (four text sizes; Light, Dark and High-contrast themes; reduce animation; read instructions aloud), 48 dp+ touch targets, and plain language throughout.
 
-**If the printer isn’t found:** make sure the phone and printer are on the same Wi-Fi, or add the printer by IP address (Printer → Add a printer by IP address).
+**If the printer isn’t found:** make sure the phone and printer are on the same Wi-Fi and the printer's Wi-Fi lamp is on, then tap *Search again*, or add it by IP address (Printer → Add a printer by IP address). Your Wi-Fi router's list of connected devices shows the address (look for a name starting with "Canon").
+
+**Print quality on the G3000:** Canon's driver for this model only offers 600 dpi and sends no quality setting. Easy Print passes Draft/High in the page header, but the G3000 may print at its normal quality either way.
+
+### How it was checked (no G3000 was available)
+
+`tools/printsim/` holds the test rig:
+
+- **Reference comparison:** the app's Canon job stream is byte-for-byte identical (apart from the timestamp) to the output of an independent open-source Canon MegaTank driver that is confirmed printing on real hardware.
+- **Fake G3000** (`fake_g3000.py`): answers SNMP like a Canon printer and strictly validates every received job (XML, block order, sizes, page geometry decoded with CUPS's libcups).
+- **Virtual printer + person** (`simulate.py`, `run_checks.py`): feeds the printed pages through a simulated G3000 and follows the app's on-screen two-sided instructions, then checks every page is present, in order and upright (long edge, short edge, 2/4 per side, booklet, copies, ranges).
+- The real app (`AppFlowTest`) was driven end to end against the fake G3000: share a PDF → add printer → print both sides → follow the guide, plus an accessibility audit.
 
 ### Building the Android app
 
@@ -40,7 +56,7 @@ cd android
 
 CI signs with a throwaway key unless you add repository secrets `EASYPRINT_KEYSTORE_B64` (base64 of a .jks), `EASYPRINT_KEYSTORE_PASSWORD`, `EASYPRINT_KEY_ALIAS` and `EASYPRINT_KEY_PASSWORD`. With a fixed key, new versions install over old ones without uninstalling.
 
-Code map: `core/` is pure Kotlin (layout engine, PWG raster encoder, IPP client; unit-tested on the JVM), `android/` is rendering (PdfRenderer, in bands so 600 dpi never needs a huge bitmap), Wi-Fi discovery, the two print paths and storage, and `ui/` is Jetpack Compose.
+Code map: `core/` is pure Kotlin (layout engine, PWG raster encoder, Canon IVEC job writer + SNMP client in `CanonG3000.kt`/`Snmp.kt`, IPP client; unit-tested on the JVM), `android/` is rendering (PdfRenderer, in bands so 600 dpi never needs a huge bitmap), Wi-Fi discovery, the two print paths and storage, and `ui/` is Jetpack Compose.
 
 ---
 

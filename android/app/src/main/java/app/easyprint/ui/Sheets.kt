@@ -45,12 +45,13 @@ fun AppSheet(onDismiss: () -> Unit, title: String, content: @Composable ColumnSc
 @Composable
 fun PrinterSheet(
     printers: List<PrinterChoice>,
-    selected: PrinterChoice,
+    selected: PrinterChoice?,
     status: PrinterStatus,
     searching: Boolean,
     onSelect: (PrinterChoice) -> Unit,
     onAdd: (String, (Boolean) -> Unit) -> Unit,
-    onForget: (PrinterChoice.Direct) -> Unit,
+    onForget: (PrinterChoice) -> Unit,
+    onSearch: () -> Unit,
     onTest: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -59,7 +60,7 @@ fun PrinterSheet(
     AppSheet(onDismiss, "Printer") {
         Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             printers.forEach { pr ->
-                val sel = pr.key == selected.key
+                val sel = pr.key == selected?.key
                 Row(
                     Modifier
                         .fillMaxWidth()
@@ -71,22 +72,19 @@ fun PrinterSheet(
                         .padding(horizontal = 14.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(
-                        if (pr is PrinterChoice.System) Icons.Outlined.Apps else Icons.Outlined.Print, null,
-                        tint = if (sel) p.accent else p.muted, modifier = Modifier.size(26.dp),
-                    )
+                    Icon(Icons.Outlined.Print, null, tint = if (sel) p.accent else p.muted, modifier = Modifier.size(26.dp))
                     Spacer(Modifier.width(14.dp))
                     Column(Modifier.weight(1f)) {
                         Text(pr.label, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         Text(
                             when (pr) {
-                                is PrinterChoice.Direct -> if (sel && status.message.isNotBlank()) status.message else "Wi-Fi · ${pr.host}"
-                                PrinterChoice.System -> "Uses Android’s print screen: Canon Print Service, Mopria, Save as PDF…"
+                                is PrinterChoice.Canon -> (if (sel && status.message.isNotBlank()) status.message + " · " else "") + "Canon Wi-Fi · ${pr.host}"
+                                is PrinterChoice.Direct -> (if (sel && status.message.isNotBlank()) status.message + " · " else "") + "IPP · ${pr.host}"
                             },
                             style = MaterialTheme.typography.bodySmall, color = p.muted,
                         )
                     }
-                    if (pr is PrinterChoice.Direct && pr.manual) {
+                    if ((pr as? PrinterChoice.Canon)?.manual == true || (pr as? PrinterChoice.Direct)?.manual == true) {
                         IconButton(onClick = { onForget(pr) }) { Icon(Icons.Outlined.Delete, "Forget ${pr.label}") }
                     }
                     RadioButton(selected = sel, onClick = null)
@@ -96,11 +94,12 @@ fun PrinterSheet(
         if (searching) Row(Modifier.padding(top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
             CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
             Spacer(Modifier.width(10.dp))
-            Text("Looking for printers on your Wi-Fi…", style = MaterialTheme.typography.bodyMedium, color = p.muted)
-        } else if (printers.none { it is PrinterChoice.Direct }) Text(
-            "No Wi-Fi printers found. Check the printer is on and connected to the same Wi-Fi as this phone, or add it by its IP address.",
+            Text("Looking for your Canon printer on Wi-Fi…", style = MaterialTheme.typography.bodyMedium, color = p.muted)
+        } else if (printers.isEmpty()) Text(
+            "No printer found. Check the printer is on and its Wi-Fi lamp is lit, and that this phone is on the same Wi-Fi. Then search again, or add it by its IP address.",
             style = MaterialTheme.typography.bodyMedium, color = p.muted, modifier = Modifier.padding(top = 14.dp),
         )
+        if (!searching) ToolRow(Icons.Outlined.Refresh, "Search again", "Looks for Canon printers on this Wi-Fi") { onSearch() }
 
         Spacer(Modifier.height(16.dp))
         if (adding) {
@@ -109,7 +108,7 @@ fun PrinterSheet(
             OutlinedTextField(
                 value = address, onValueChange = { address = it }, singleLine = true,
                 label = { Text("Printer IP address") }, placeholder = { Text("e.g. 192.168.1.23") },
-                supportingText = { Text("Find it on the printer: LAN settings → Confirm LAN settings, or print the network settings page.") },
+                supportingText = { Text("Find it in your Wi-Fi router’s list of connected devices (look for a name starting with “Canon”).") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done),
                 modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp),
             )
@@ -205,8 +204,8 @@ fun HelpSheet(onDismiss: () -> Unit) {
         P("• Long edge: reads like a book. Use this for most documents.\n• Short edge: flips up like a notepad or wall calendar.")
         P("If backs come out upside down or on the wrong sheets, run the two-sided test (Printer → Two-sided test). It fixes this for you.")
         H("Connecting")
-        P("Your phone and printer must be on the same Wi-Fi. The printer appears automatically. If not, add it by IP address in the Printer menu.")
-        P("“Other printers & Save as PDF” uses Android’s own print screen. It works with any printer that has a print service (Canon Print Service, Mopria), and can save PDFs.")
+        P("Your phone and printer must be on the same Wi-Fi. Easy Print talks to the G3000 the same way Canon’s own software does, so it doesn’t need Android’s print settings, Mopria or a print plug-in.")
+        P("The printer usually appears by itself. If not, add it by IP address in the Printer menu. You can find the address in your Wi-Fi router’s list of connected devices (look for a name starting with “Canon”).")
         H("Opening documents")
         P("Tap Choose document, or use Share → Easy Print from any app (Files, Gmail, Photos, Chrome, WhatsApp…). PDFs, photos and text files work. For Word or Excel files, choose Share → Print or Save as PDF in that app first.")
         H("Tips")

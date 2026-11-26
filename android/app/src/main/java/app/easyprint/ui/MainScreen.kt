@@ -111,29 +111,36 @@ private fun PrinterCard(state: UiState, actions: Actions) {
             .clip(RoundedCornerShape(18.dp))
             .background(p.surface)
             .border(1.dp, p.border, RoundedCornerShape(18.dp))
-            .clickable(role = Role.Button, onClickLabel = "Change printer", onClick = actions::openPrinters)
+            .clickable(role = Role.Button, onClickLabel = if (pr == null) "Set up printer" else "Change printer", onClick = actions::openPrinters)
             .padding(horizontal = 16.dp, vertical = 14.dp)
             .semantics(mergeDescendants = true) { },
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(p.accentSoft), contentAlignment = Alignment.Center) {
-            Icon(if (pr is PrinterChoice.System) Icons.Outlined.Apps else Icons.Outlined.Print, null, tint = p.accent)
+            if (pr == null && state.searching) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.5.dp)
+            else Icon(Icons.Outlined.Print, null, tint = p.accent)
         }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
-            Text(pr.label, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(
+                pr?.label ?: if (state.searching) "Looking for your printer…" else "No printer found yet",
+                style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis,
+            )
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }) {
-                StatusDot(state.status.state)
-                Spacer(Modifier.width(6.dp))
+                if (pr != null) { StatusDot(state.status.state); Spacer(Modifier.width(6.dp)) }
                 Text(
-                    state.status.message.ifBlank { if (state.searching) "Looking for printers…" else "" },
+                    when {
+                        pr != null -> state.status.message.ifBlank { "Checking…" }
+                        state.searching -> "Searching your Wi-Fi"
+                        else -> "Tap to add it by IP address"
+                    },
                     style = MaterialTheme.typography.bodySmall, color = p.muted, maxLines = 2,
                 )
             }
             InkBars(state.status.markers, Modifier.padding(top = 8.dp))
         }
         Spacer(Modifier.width(8.dp))
-        Text("Change", style = MaterialTheme.typography.labelLarge, color = p.accent)
+        Text(if (pr == null) "Set up" else "Change", style = MaterialTheme.typography.labelLarge, color = p.accent)
     }
 }
 

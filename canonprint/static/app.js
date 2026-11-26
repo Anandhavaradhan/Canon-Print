@@ -906,7 +906,9 @@ async function wizardBacks() {
     showDone({
       title: "Step 3 of 3 · All done!",
       lead: `Your ${plural(wiz.result.sheets, "sheet")} are printing on the back now.`,
-      extra: "When they’re out, turn the pile over like a book page. Page 1 will be on top.",
+      extra: state.settings.reverse_backs
+        ? "When they’re out, turn the pile over like a book page. Page 1 will be at the bottom of the pile."
+        : "When they’re out, turn the pile over like a book page. Page 1 will be on top.",
       progress: [3, 3],
       r,
     });

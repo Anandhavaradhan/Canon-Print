@@ -74,9 +74,9 @@ class ScreenshotTest {
         }
         val sizes = f.flatMap { it.pages }
         val plan = makePlan(sizes, settings)
-        val canon = PrinterChoice.Direct("Canon G3010 series", "192.168.1.23")
+        val canon = PrinterChoice.Canon("Canon G3000 series", "192.168.1.23")
         return UiState(
-            files = f, settings = settings, plan = plan, printers = listOf(canon, PrinterChoice.System), printer = canon,
+            files = f, settings = settings, plan = plan, printers = listOf(canon), printer = canon,
             status = PrinterStatus("ready", "Ready", listOf(
                 PrinterInfo.Marker("Black", "#000000", 80, "ink-cartridge"), PrinterInfo.Marker("Cyan", "#00A0E0", 65, "ink-cartridge"),
                 PrinterInfo.Marker("Magenta", "#E4007F", 70, "ink-cartridge"), PrinterInfo.Marker("Yellow", "#FFD800", 45, "ink-cartridge"),
@@ -130,6 +130,11 @@ class ScreenshotTest {
 
     @Test fun empty() = shot("empty") {
         val s = state(PrintSettings()).copy(files = emptyList(), plan = null)
+        EasyPrintTheme(s.look) { MainScreen(s, noop, loader, SnackbarHostState()) }
+    }
+
+    @Test fun no_printer() = shot("no_printer") {
+        val s = state(PrintSettings()).copy(printer = null, printers = emptyList(), status = PrinterStatus(), searching = false)
         EasyPrintTheme(s.look) { MainScreen(s, noop, loader, SnackbarHostState()) }
     }
 

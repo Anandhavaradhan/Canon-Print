@@ -81,3 +81,60 @@ class PrinterDiscovery(context: Context, private val onChange: (List<PrinterChoi
         runCatching { nsd.resolveService(next, cb) }.onFailure { resolving = false; resolveNext() }
     }
 }
+
+/**
+ * Finds Canon printers the way Canon's own software does: an SNMP v1 request for
+ * Canon's private OIDs (community "canon_admin") to every address on the phone's
+ * Wi-Fi subnet. Unicast, because many routers drop replies to broadcasts.
+ */
+object CanonScanner {
+    /** Addresses to probe: the /24 around each of the phone's IPv4 addresses on Wi-Fi/Ethernet. */
+    fun candidates(context: Context): List<String> {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager ?: return emptyList()
+        val nets = buildList {
+            cm.activeNetwork?.let { add(it) }
+            @Suppress("DEPRECATION") addAll(cm.allNetworks)
+        }.distinct()
+        val out = LinkedHashSet<String>()
+        for (n in nets) {
+            val caps = cm.getNetworkCapabilities(n) ?: continue
+            if (!caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) &&
+                !caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET)) continue
+            val lp = cm.getLinkProperties(n) ?: continue
+            for (la in lp.linkAddresses) {
+                val a = la.address as? java.net.Inet4Address ?: continue
+                if (a.isLoopbackAddress) continue
+                val b = a.address
+                for (i in 1..254) {
+                    if (i == (b[3].toInt() and 0xff)) continue
+                    out += "${b[0].toInt() and 0xff}.${b[1].toInt() and 0xff}.${b[2].toInt() and 0xff}.$i"
+                }
+            }
+        }
+        return out.toList()
+    }
+
+    /** Probe [hosts] in parallel with one socket; returns the Canon printers that answered. */
+    fun probe(hosts: List<String>, timeoutMs: Int = 2500, port: Int = app.easyprint.core.Snmp.PORT): List<app.easyprint.core.CanonG3000.Found> {
+        if (hosts.isEmpty()) return emptyList()
+        val found = LinkedHashMap<String, app.easyprint.core.CanonG3000.Found>()
+        java.net.DatagramSocket().use { s ->
+            val req = app.easyprint.core.Snmp.request(app.easyprint.core.CanonG3000.COMMUNITY_CANON, 1, app.easyprint.core.CanonG3000.DISCOVERY_OIDS)
+            for (h in hosts) runCatching {
+                s.send(java.net.DatagramPacket(req, req.size, java.net.InetAddress.getByName(h), port))
+            }
+            val deadline = System.currentTimeMillis() + timeoutMs
+            val buf = ByteArray(4096)
+            while (true) {
+                val left = deadline - System.currentTimeMillis()
+                if (left <= 0) break
+                s.soTimeout = left.toInt().coerceAtLeast(1)
+                val dp = java.net.DatagramPacket(buf, buf.size)
+                try { s.receive(dp) } catch (_: java.net.SocketTimeoutException) { break }
+                val host = dp.address.hostAddress ?: continue
+                app.easyprint.core.CanonG3000.parseDiscovery(host, app.easyprint.core.Snmp.parse(buf, dp.length))?.let { found[host] = it }
+            }
+        }
+        return found.values.toList()
+    }
+}

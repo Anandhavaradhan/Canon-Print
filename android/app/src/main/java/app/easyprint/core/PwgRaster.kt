@@ -128,8 +128,9 @@ class PwgRasterWriter(private val out: OutputStream) {
             u32(452, h.totalPages) // TotalPageCount
             u32(456, 1) // CrossFeedTransform
             u32(460, 1) // FeedTransform
-            u32(484, 0xffffff) // AlternatePrimary
-            u32(488, h.printQuality)
+            // cupsInteger[] starts at 452: [7] AlternatePrimary = 480, [8] PrintQuality = 484 (PWG 5102.4)
+            u32(480, 0xffffff) // AlternatePrimary
+            u32(484, h.printQuality)
             str(1668, "auto") // RenderingIntent
             str(1732, h.pageSizeName)
             return b.array()

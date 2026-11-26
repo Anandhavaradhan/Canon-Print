@@ -266,6 +266,12 @@ class IppClient(
 
     private class HttpStatusException(val code: Int) : IOException("The printer answered HTTP $code.")
 
+    /** Diagnostics: status and any attributes the printer ignored or substituted in the last reply. */
+    @Volatile var lastStatus: Int = 0
+        private set
+    @Volatile var lastUnsupported: Map<String, List<IppValue>> = emptyMap()
+        private set
+
     private fun post(body: ByteArray, document: File? = null, useChunked: Boolean = chunked): IppResponse {
         val conn = httpUrl.openConnection() as HttpURLConnection
         try {
@@ -284,7 +290,10 @@ class IppClient(
             }
             val code = conn.responseCode
             if (code != 200) throw HttpStatusException(code)
-            return conn.inputStream.use { IppParser.parse(it) }
+            return conn.inputStream.use { IppParser.parse(it) }.also {
+                lastStatus = it.status
+                lastUnsupported = it.group(Ipp.UNSUPPORTED)
+            }
         } finally {
             conn.disconnect()
         }

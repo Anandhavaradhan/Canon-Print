@@ -197,7 +197,9 @@ private fun wizardText(w: Wizard, lastPageFirst: Boolean): Pair<String, String> 
     }
     WizardStep.BACKS -> "Step 3 of 3 · Printing the backs" to (w.progress ?: "")
     WizardStep.DONE -> if (w.twoPass) "All done!" to
-        "Your ${plural(w.sheets, "sheet")} are printing on the back now. When they’re out, turn the pile over like a book page. Page 1 will be on top."
+        "Your ${plural(w.sheets, "sheet")} are printing on the back now. " + if (w.reversedBacks)
+        "When they’re out, turn the pile over like a book page. Page 1 will be at the bottom of the pile."
+    else "When they’re out, turn the pile over like a book page. Page 1 will be on top."
     else "Sent to the printer" to ("${plural(w.sheets, "sheet")} on the way." + if (lastPageFirst) " Pages will land in order, face up." else "")
     WizardStep.CALIBRATE -> "Two-sided test · Check the result" to
         "Pick up the sheet with page 1 and turn it over like a book page. Is page 2 on the back of page 1? Is page 2 the right way up?"

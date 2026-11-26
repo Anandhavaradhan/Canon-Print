@@ -11,11 +11,22 @@ enum class PageSubset(val label: String) { ALL("All pages in the range"), ODD("O
 enum class PageOrder(val label: String) { ACROSS("Across, then down"), DOWN("Down, then across") }
 enum class DuplexMethod { MANUAL, AUTO }
 
-enum class PaperType(val label: String, val ippMediaType: String) {
-    PLAIN("Plain paper", "stationery"),
-    PHOTO_GLOSSY("Glossy photo paper", "photographic-glossy"),
-    PHOTO_MATTE("Matte photo paper", "photographic-matte"),
-    ENVELOPE("Envelope", "envelope"),
+/**
+ * Paper types offered by canong3000.ppd. [canonCode] is the IVEC papertype Canon's
+ * driver sends (tocanonij cncl_paramtbl.h + cnijfilter2-loong64 tables.h, all
+ * measured against Canon's library except OTHER_PHOTO, which is inferred there).
+ */
+enum class PaperType(val label: String, val ippMediaType: String, val canonCode: String) {
+    PLAIN("Plain paper", "stationery", "stationery"),
+    PHOTO_GLOSSY("Glossy Photo Paper", "photographic-glossy", "custom-media-type-canon-14"),
+    PHOTO_PLUS_GLOSSY_II("Photo Paper Plus Glossy II", "photographic-glossy", "custom-media-type-canon-3"),
+    PHOTO_SEMIGLOSS("Photo Paper Plus Semi-gloss", "photographic-semi-gloss", "custom-media-type-canon-6"),
+    PHOTO_LUSTER("Photo Paper Pro Luster", "photographic-high-gloss", "custom-media-type-canon-17"),
+    PHOTO_MATTE("Matte Photo Paper", "photographic-matte", "custom-media-type-canon-15"),
+    PHOTO_PAPER("Photo Paper", "photographic", "photographic"),
+    OTHER_PHOTO("Other Photo Paper", "photographic", "custom-media-type-canon-16"),
+    HIGH_RES("High Resolution Paper", "stationery-coated", "custom-media-type-canon-9"),
+    ENVELOPE("Envelope", "envelope", "custom-media-type-canon-18"),
 }
 
 /** Paper sizes in points (1/72 inch), always portrait. */

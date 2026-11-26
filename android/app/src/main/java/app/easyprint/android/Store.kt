@@ -58,12 +58,18 @@ class Store(context: Context) {
         get() = prefs.getString("printer", null)
         set(v) = prefs.edit().putString("printer", v).apply()
 
-    var manualPrinters: List<PrinterChoice.Direct>
+    var manualPrinters: List<PrinterChoice>
         get() = array("manualPrinters").map { o ->
-            PrinterChoice.Direct(o.getString("name"), o.getString("host"), o.optInt("port", 631), o.optString("path", "ipp/print"), manual = true)
+            if (o.optString("kind") == "canon")
+                PrinterChoice.Canon(o.getString("name"), o.getString("host"), o.optString("mac"), manual = true, port = o.optInt("port", 9100))
+            else
+                PrinterChoice.Direct(o.getString("name"), o.getString("host"), o.optInt("port", 631), o.optString("path", "ipp/print"), manual = true)
         }
         set(v) = putArray("manualPrinters", v.map { p ->
-            JSONObject().put("name", p.name).put("host", p.host).put("port", p.port).put("path", p.path)
+            when (p) {
+                is PrinterChoice.Canon -> JSONObject().put("kind", "canon").put("name", p.name).put("host", p.host).put("mac", p.mac).put("port", p.port)
+                is PrinterChoice.Direct -> JSONObject().put("kind", "ipp").put("name", p.name).put("host", p.host).put("port", p.port).put("path", p.path)
+            }
         })
 
     var presets: List<SavedPreset>

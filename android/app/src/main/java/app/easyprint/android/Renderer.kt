@@ -7,6 +7,7 @@ import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Rect
+import android.graphics.RectF
 import android.graphics.pdf.PdfRenderer
 import android.os.ParcelFileDescriptor
 import app.easyprint.core.Affine
@@ -155,14 +156,18 @@ fun renderPhysicalBands(
     rotate180: Boolean,
     dpi: Int,
     bandRows: Int = 256,
+    /** Region of the physical page to render (points, top-left origin). Defaults to the whole sheet. */
+    region: RectF? = null,
     onBand: (Bitmap, Int, Int) -> Unit,
 ) {
     val k = dpi / 72f
-    val widthPx = (plan.paperW * k).roundToInt()
-    val heightPx = (plan.paperH * k).roundToInt()
+    val ox = region?.left ?: 0f
+    val oy = region?.top ?: 0f
+    val widthPx = ((region?.width() ?: plan.paperW) * k).roundToInt()
+    val heightPx = ((region?.height() ?: plan.paperH) * k).roundToInt()
     val band = Bitmap.createBitmap(widthPx, min(bandRows, heightPx), Bitmap.Config.ARGB_8888)
     try {
-        val physical = plan.physicalTransform(side, rotate180)
+        val physical = plan.physicalTransform(side, rotate180).then(Affine.translate(-ox, -oy))
         var y0 = 0
         while (y0 < heightPx) {
             val rows = min(band.height, heightPx - y0)

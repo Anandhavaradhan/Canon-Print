@@ -17,7 +17,6 @@ import app.easyprint.android.SavedPreset
 import app.easyprint.android.OpenedFile
 import app.easyprint.core.PrintSettings
 import app.easyprint.ui.*
-import java.lang.ref.WeakReference
 
 class MainActivity : ComponentActivity() {
     private val vm: AppViewModel by viewModels()
@@ -29,7 +28,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        vm.activity = WeakReference(this)
         if (savedInstanceState == null) handleIntent(intent)
 
         setContent {
@@ -65,6 +63,7 @@ class MainActivity : ComponentActivity() {
                         onSelect = { vm.selectPrinter(it) },
                         onAdd = { addr, done -> vm.addManualPrinter(addr, done) },
                         onForget = { vm.forgetPrinter(it) },
+                        onSearch = { vm.scanForCanon() },
                         onTest = { actions.runTest() },
                         onDismiss = { sheet = null },
                     )
@@ -92,7 +91,8 @@ class MainActivity : ComponentActivity() {
     override fun onStop() { super.onStop(); vm.onStop() }
 
     @Suppress("DEPRECATION")
-    private fun handleIntent(intent: Intent?) {
+    /** Files shared or opened with the app (also used by tests). */
+    internal fun handleIntent(intent: Intent?) {
         intent ?: return
         val uris: List<Uri> = when (intent.action) {
             Intent.ACTION_SEND -> {

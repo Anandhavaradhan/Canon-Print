@@ -61,6 +61,10 @@ android {
                     it.systemProperty("robolectric.dependency.dir", dir)
                 }
                 System.getenv("SCREENSHOT_DIR")?.let { dir -> it.environment("SCREENSHOT_DIR", dir) }
+                // Simulation hooks used by tools/printsim (optional)
+                listOf("PDFIUM_LIB", "SCENARIOS", "SCENARIO_OUT", "IPP_TEST_PORT", "EVE_PORT", "EVE_PDF", "CANON_OUT", "CANON_HOST", "CANON_PDF", "SNMP_INTEROP").forEach { k ->
+                    System.getenv(k)?.let { v -> it.environment(k, v) }
+                }
             }
         }
     }
@@ -83,6 +87,7 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.14.1")
     testImplementation("androidx.test:core:1.6.1")
+    testImplementation("net.java.dev.jna:jna:5.14.0")
     testImplementation(composeBom)
     testImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-test-manifest")

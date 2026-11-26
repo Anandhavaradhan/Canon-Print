@@ -76,7 +76,7 @@ fun PreviewCard(plan: Plan, load: PreviewLoader, modifier: Modifier = Modifier) 
                             .background(if (sel) p.surface else p.surface3)
                             .clickable(role = Role.Tab) { showBack = b }
                             .semantics { selected = sel }
-                            .heightIn(min = 40.dp)
+                            .heightIn(min = 48.dp)
                             .padding(horizontal = 16.dp),
                         contentAlignment = Alignment.Center,
                     ) { Text(label, style = MaterialTheme.typography.labelLarge, color = if (sel) p.accent else p.text) }

@@ -1,21 +1,7 @@
 package app.easyprint.android
 
-import android.app.Activity
-import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.ColorMatrix
-import android.graphics.ColorMatrixColorFilter
-import android.graphics.Paint
 import android.graphics.RectF
-import android.graphics.pdf.PdfDocument
-import android.os.Bundle
-import android.os.CancellationSignal
-import android.os.ParcelFileDescriptor
-import android.print.PageRange
-import android.print.PrintAttributes
-import android.print.PrintDocumentAdapter
-import android.print.PrintDocumentInfo
-import android.print.PrintManager
+import app.easyprint.core.CanonG3000
 import app.easyprint.core.ColorMode
 import app.easyprint.core.IppClient
 import app.easyprint.core.Paper
@@ -27,6 +13,8 @@ import app.easyprint.core.PwgRasterWriter
 import app.easyprint.core.Quality
 import app.easyprint.core.Sides
 import java.io.File
+import java.net.InetSocketAddress
+import java.net.Socket
 import kotlin.math.abs
 
 /** Where a job goes. */
@@ -47,11 +35,26 @@ sealed class PrinterChoice {
         fun client() = IppClient(host, port, path)
     }
 
-    /** Android's own printing (Canon Print Service, Mopria, Save as PDF, any printer). */
-    data object System : PrinterChoice() {
-        override val key = "system"
-        override val label = "Other printers & Save as PDF"
+    /**
+     * A Canon printer driven the way Canon's own software does it: found over SNMP,
+     * jobs sent as IVEC + PWG Raster over TCP port 9100. This is the path for the
+     * G3000, which has no IPP (so Android printing and Mopria can't see it).
+     */
+    data class Canon(
+        val name: String,
+        val host: String,
+        val mac: String = "",
+        val manual: Boolean = false,
+        val port: Int = CanonG3000.PORT_RAW,
+    ) : PrinterChoice() {
+        override val key get() = "canon://$host:$port"
+        override val label get() = name
     }
+}
+
+fun PrinterChoice.host() = when (this) {
+    is PrinterChoice.Canon -> host
+    is PrinterChoice.Direct -> host
 }
 
 fun isCanonG(name: String) = name.lowercase().replace(" ", "").let { it.contains("canon") && Regex("g3\\d{3}|g30\\d0").containsMatchIn(it) }
@@ -93,8 +96,11 @@ object DirectOutput {
     ) {
         val dpi = chooseDpi(info, settings.quality)
         val bw = settings.color == ColorMode.BW
-        val grayType = info == null || info.rasterTypes.isEmpty() || "sgray_8" in info.rasterTypes
-        val gray = bw && grayType
+        val types = info?.rasterTypes.orEmpty()
+        val grayType = types.isEmpty() || "sgray_8" in types
+        val rgbType = types.isEmpty() || "srgb_8" in types
+        // Black & white, or a printer that only takes greyscale raster
+        val gray = (bw || !rgbType) && grayType
         val (w, h) = physicalSizePx(plan, dpi)
         val media = mediaKeyword(info, settings.paper)
         out.outputStream().buffered(256 * 1024).use { os ->
@@ -114,7 +120,7 @@ object DirectOutput {
                 val row = IntArray(w * 256)
                 renderPhysicalBands(renderer, plan, page.side, page.rotate180, dpi) { band, _, rows ->
                     band.getPixels(row, 0, w, 0, 0, w, rows)
-                    if (bw && !gray) toGrayInPlace(row, w * rows)
+                    if ((bw || !rgbType) && !gray) toGrayInPlace(row, w * rows)
                     writer.writeRows(row, w, rows)
                 }
                 writer.endPage()
@@ -134,8 +140,15 @@ object DirectOutput {
         jobName = jobName,
         media = mediaKeyword(info, settings.paper),
         mediaType = settings.paperType.ippMediaType.takeIf { info?.mediaTypes.isNullOrEmpty() || it in info!!.mediaTypes },
-        colorMode = if (settings.color == ColorMode.BW && (info?.colorModes.isNullOrEmpty() || "monochrome" in info!!.colorModes)) "monochrome"
-        else if (settings.color == ColorMode.BW) "auto-monochrome" else "color",
+        colorMode = run {
+            val modes = info?.colorModes.orEmpty()
+            val wantBw = settings.color == ColorMode.BW || (modes.isNotEmpty() && "color" !in modes)
+            when {
+                !wantBw -> "color"
+                modes.isEmpty() || "monochrome" in modes -> "monochrome"
+                else -> modes.first()
+            }
+        },
         quality = settings.quality.ippValue,
         sides = when (pass.sides) {
             Sides.ONE -> "one-sided"
@@ -145,86 +158,97 @@ object DirectOutput {
     )
 }
 
-object SystemOutput {
-    private fun dpi(q: Quality) = when (q) { Quality.DRAFT -> 150; Quality.STANDARD -> 200; Quality.HIGH -> 300 }
-
-    /** Render a pass into a PDF of portrait pages (images), for Android's print framework. */
-    fun writePdf(renderer: DocRenderer, plan: Plan, pass: Pass, settings: PrintSettings, out: File, progress: (Int, Int) -> Unit) {
-        val dpi = dpi(settings.quality)
-        val doc = PdfDocument()
-        val paint = Paint(Paint.FILTER_BITMAP_FLAG).apply {
-            if (settings.color == ColorMode.BW) colorFilter = ColorMatrixColorFilter(ColorMatrix().apply { setSaturation(0f) })
-        }
-        val k = 72f / dpi
+object CanonOutput {
+    /**
+     * Render one pass and write the complete Canon job (IVEC blocks + one PWG Raster
+     * stream per page) to [out]. Each page covers only the G3000's imageable area,
+     * at 600 dpi, 24-bit sRGB, exactly like Canon's driver.
+     */
+    fun writeJob(
+        renderer: DocRenderer, plan: Plan, pass: Pass, settings: PrintSettings,
+        title: String, jobId: Int, out: File, progress: (Int, Int) -> Unit,
+    ) {
+        val m = CanonG3000.media(settings.paper)
+        val bw = settings.color == ColorMode.BW
+        val region = RectF(m.originX, m.originY, m.originX + (m.urx - m.llx), m.originY + (m.ury - m.lly))
+        val w = m.widthPx
+        val pageFiles = mutableListOf<File>()
         try {
             pass.pages.forEachIndexed { i, page ->
                 progress(i + 1, pass.pages.size)
-                val pdfPage = doc.startPage(
-                    PdfDocument.PageInfo.Builder(Math.round(plan.paperW), Math.round(plan.paperH), i + 1).create()
-                )
-                val canvas = pdfPage.canvas
-                renderPhysicalBands(renderer, plan, page.side, page.rotate180, dpi) { band: Bitmap, y0, rows ->
-                    val src = android.graphics.Rect(0, 0, band.width, rows)
-                    canvas.drawBitmap(band, src, RectF(0f, y0 * k, band.width * k, (y0 + rows) * k), paint)
+                val f = File(out.parentFile, "${out.name}.p$i.pwg")
+                pageFiles += f
+                f.outputStream().buffered(256 * 1024).use { os ->
+                    val writer = PwgRasterWriter(os) // one complete stream per page, as Canon sends
+                    writer.beginPage(
+                        PwgRasterWriter.PageHeader(
+                            widthPx = w, heightPx = m.heightPx, dpi = CanonG3000.DPI, gray = false,
+                            pageSizePt = Math.round(m.w) to Math.round(m.h),
+                            pageSizeName = m.ivecName, mediaType = settings.paperType.canonCode,
+                            // Standard = 0 ("printer default"), exactly what Canon's driver sends; only
+                            // Draft/High are signalled, via the PWG header's PrintQuality field.
+                            printQuality = if (settings.quality == Quality.STANDARD) 0 else settings.quality.ippValue,
+                            totalPages = 0,
+                        )
+                    )
+                    val row = IntArray(w * 256)
+                    renderPhysicalBands(renderer, plan, page.side, page.rotate180, CanonG3000.DPI, region = region) { band, _, rows ->
+                        band.getPixels(row, 0, w, 0, 0, w, rows)
+                        if (bw) toGray(row, w * rows) // Canon sends 24-bit sRGB even in monochrome
+                        writer.writeRows(row, w, rows)
+                    }
+                    writer.endPage()
                 }
-                doc.finishPage(pdfPage)
             }
-            out.outputStream().use { doc.writeTo(it) }
-        } finally {
-            doc.close()
-        }
-    }
-
-    fun mediaSize(p: Paper): PrintAttributes.MediaSize = when (p) {
-        Paper.A4 -> PrintAttributes.MediaSize.ISO_A4
-        Paper.LETTER -> PrintAttributes.MediaSize.NA_LETTER
-        Paper.LEGAL -> PrintAttributes.MediaSize.NA_LEGAL
-        Paper.A5 -> PrintAttributes.MediaSize.ISO_A5
-        Paper.B5 -> PrintAttributes.MediaSize.JIS_B5
-        Paper.PHOTO_4X6 -> PrintAttributes.MediaSize.NA_INDEX_4X6
-        Paper.PHOTO_5X7 -> PrintAttributes.MediaSize("na_5x7", "5×7 in", 5000, 7000)
-        Paper.PHOTO_8X10 -> PrintAttributes.MediaSize("na_8x10", "8×10 in", 8000, 10000)
-        Paper.ENV_DL -> PrintAttributes.MediaSize("iso_dl", "DL envelope", 4331, 8661)
-        Paper.ENV_10 -> PrintAttributes.MediaSize("na_10", "#10 envelope", 4125, 9500)
-    }
-
-    /** Opens Android's print screen with our settings filled in. */
-    fun print(activity: Activity, jobName: String, pdf: File, settings: PrintSettings, sides: Sides, pages: Int) {
-        val pm = activity.getSystemService(Context.PRINT_SERVICE) as PrintManager
-        val attrs = PrintAttributes.Builder()
-            .setMediaSize(mediaSize(settings.paper))
-            .setColorMode(if (settings.color == ColorMode.BW) PrintAttributes.COLOR_MODE_MONOCHROME else PrintAttributes.COLOR_MODE_COLOR)
-            .setMinMargins(PrintAttributes.Margins.NO_MARGINS)
-            .setDuplexMode(
-                when (sides) {
-                    Sides.ONE -> PrintAttributes.DUPLEX_MODE_NONE
-                    Sides.LONG -> PrintAttributes.DUPLEX_MODE_LONG_EDGE
-                    Sides.SHORT -> PrintAttributes.DUPLEX_MODE_SHORT_EDGE
-                }
+            val job = CanonG3000.JobInfo(
+                jobId = jobId, title = title, user = "Easy Print", paper = settings.paper,
+                paperType = settings.paperType, monochrome = bw,
             )
-            .build()
-        pm.print(jobName, FileAdapter(jobName, pdf, pages), attrs)
+            out.outputStream().buffered(256 * 1024).use { CanonG3000.writeJob(it, job, pageFiles) }
+        } finally {
+            pageFiles.forEach { it.delete() }
+        }
     }
 
-    private class FileAdapter(val name: String, val file: File, val pages: Int) : PrintDocumentAdapter() {
-        override fun onLayout(old: PrintAttributes?, new: PrintAttributes, signal: CancellationSignal?, cb: LayoutResultCallback, extras: Bundle?) {
-            if (signal?.isCanceled == true) { cb.onLayoutCancelled(); return }
-            val info = PrintDocumentInfo.Builder("$name.pdf")
-                .setContentType(PrintDocumentInfo.CONTENT_TYPE_DOCUMENT)
-                .setPageCount(pages)
-                .build()
-            cb.onLayoutFinished(info, old != new)
+    private fun toGray(px: IntArray, n: Int) {
+        for (i in 0 until n) {
+            val p = px[i]
+            val g = (((p shr 16) and 0xff) * 299 + ((p shr 8) and 0xff) * 587 + (p and 0xff) * 114) / 1000
+            px[i] = (0xff shl 24) or (g shl 16) or (g shl 8) or g
         }
+    }
 
-        override fun onWrite(ranges: Array<out PageRange>, dest: ParcelFileDescriptor, signal: CancellationSignal?, cb: WriteResultCallback) {
-            try {
-                file.inputStream().use { input ->
-                    java.io.FileOutputStream(dest.fileDescriptor).use { input.copyTo(it) }
+    /** Send a prepared job to the printer's raw port (one-way stream, like Canon's driver). */
+    fun send(host: String, port: Int, job: File, progress: (Long, Long) -> Unit = { _, _ -> }) {
+        // Canon's driver first "taps" the printer over SNMP: a sleeping printer may not answer 9100 otherwise.
+        runCatching { app.easyprint.core.Snmp.get(host, CanonG3000.COMMUNITY_CANON, listOf(CanonG3000.OID_MODEL), 1500, retries = 0) }
+        Socket().use { s ->
+            s.connect(InetSocketAddress(host, port), 8000)
+            s.soTimeout = 60_000
+            s.tcpNoDelay = false
+            val os = s.getOutputStream()
+            val total = job.length()
+            var sent = 0L
+            job.inputStream().use { input ->
+                val buf = ByteArray(64 * 1024)
+                while (true) {
+                    val n = input.read(buf)
+                    if (n < 0) break
+                    os.write(buf, 0, n)
+                    sent += n
+                    progress(sent, total)
                 }
-                cb.onWriteFinished(arrayOf(PageRange.ALL_PAGES))
-            } catch (e: Exception) {
-                cb.onWriteFailed(e.message)
             }
+            os.flush()
+            s.shutdownOutput()
+            // Port 9100 is one-way: give the printer a moment to drain, but never wait long.
+            s.soTimeout = 3000
+            runCatching { s.getInputStream().read() }
         }
     }
+
+    /** Is something listening on the printer's raw port? */
+    fun reachable(host: String, port: Int, timeoutMs: Int = 2500): Boolean = runCatching {
+        Socket().use { it.connect(InetSocketAddress(host, port), timeoutMs) }; true
+    }.getOrDefault(false)
 }
